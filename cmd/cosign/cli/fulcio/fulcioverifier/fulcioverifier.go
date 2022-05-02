@@ -18,6 +18,7 @@ package fulcioverifier
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/pkg/errors"
@@ -33,10 +34,12 @@ func NewSigner(ctx context.Context, ko options.KeyOpts) (*fulcio.Signer, error) 
 		return nil, err
 	}
 
+	log.Println("preverify sct")
 	// verify the sct
 	if err := ctl.VerifySCT(ctx, fs.Cert, fs.Chain, fs.SCT); err != nil {
 		return nil, errors.Wrap(err, "verifying SCT")
 	}
+	log.Println("postverify sct")
 	fmt.Fprintln(os.Stderr, "Successfully verified SCT...")
 
 	return fs, nil

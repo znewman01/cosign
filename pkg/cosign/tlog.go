@@ -24,6 +24,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -358,7 +359,9 @@ func VerifyTLogEntry(ctx context.Context, rekorClient *client.Rekor, e *models.L
 		LogID:          *e.LogID,
 	}
 
+	log.Println("tuf:start")
 	rekorPubKeys, err := GetRekorPubs(ctx)
+	log.Println("tuf:stop")
 	if err != nil {
 		return errors.Wrap(err, "unable to fetch Rekor public keys from TUF repository")
 	}

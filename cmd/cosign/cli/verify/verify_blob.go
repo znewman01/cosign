@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -62,6 +63,7 @@ func isb64(data []byte) bool {
 // nolint
 func VerifyBlobCmd(ctx context.Context, ko options.KeyOpts, certRef, certEmail,
 	certOidcIssuer, certChain, sigRef, blobRef string, enforceSCT bool) error {
+	log.Println("start")
 	var verifier signature.Verifier
 	var cert *x509.Certificate
 
@@ -155,7 +157,9 @@ func VerifyBlobCmd(ctx context.Context, ko options.KeyOpts, certRef, certEmail,
 			return err
 		}
 
+		log.Println("rekor-online-search:start")
 		uuids, err := cosign.FindTLogEntriesByPayload(ctx, rClient, blobBytes)
+		log.Println("rekor-online-search:stop")
 		if err != nil {
 			return err
 		}
@@ -182,6 +186,7 @@ func VerifyBlobCmd(ctx context.Context, ko options.KeyOpts, certRef, certEmail,
 	}
 
 	fmt.Fprintln(os.Stderr, "Verified OK")
+	log.Println("stop")
 	return nil
 }
 
@@ -189,7 +194,9 @@ func verifySigByUUID(ctx context.Context, ko options.KeyOpts, rClient *client.Re
 	uuids []string, blobBytes []byte, enforceSCT bool) error {
 	var validSigExists bool
 	for _, u := range uuids {
+		log.Println("rekor-get:start")
 		tlogEntry, err := cosign.GetTlogEntry(ctx, rClient, u)
+		log.Println("rekor-get:stop")
 		if err != nil {
 			continue
 		}
@@ -199,6 +206,7 @@ func verifySigByUUID(ctx context.Context, ko options.KeyOpts, rClient *client.Re
 			continue
 		}
 
+		log.Println("get-certs:start")
 		co := &cosign.CheckOpts{
 			RootCerts:         fulcio.GetRoots(),
 			IntermediateCerts: fulcio.GetIntermediates(),
@@ -206,6 +214,7 @@ func verifySigByUUID(ctx context.Context, ko options.KeyOpts, rClient *client.Re
 			CertOidcIssuer:    certOidcIssuer,
 			EnforceSCT:        enforceSCT,
 		}
+		log.Println("get-certs:stop")
 		cert := certs[0]
 		verifier, err := cosign.ValidateAndUnpackCert(cert, co)
 		if err != nil {
@@ -291,8 +300,10 @@ func payloadBytes(blobRef string) ([]byte, error) {
 func verifyRekorEntry(ctx context.Context, ko options.KeyOpts, e *models.LogEntryAnon, pubKey signature.Verifier, cert *x509.Certificate, b64sig string, blobBytes []byte) error {
 	// If we have a bundle with a rekor entry, let's first try to verify offline
 	if ko.BundlePath != "" {
+		log.Println("rekor-verify-offline:start")
 		if err := verifyRekorBundle(ctx, ko.BundlePath, cert); err == nil {
 			fmt.Fprintf(os.Stderr, "tlog entry verified offline\n")
+			log.Println("rekor-verify-offline:end")
 			return nil
 		}
 	}
@@ -300,6 +311,7 @@ func verifyRekorEntry(ctx context.Context, ko options.KeyOpts, e *models.LogEntr
 		return nil
 	}
 
+	log.Println("rekor-verify-online:start")
 	rekorClient, err := rekor.NewClient(ko.RekorURL)
 	if err != nil {
 		return err
@@ -328,6 +340,7 @@ func verifyRekorEntry(ctx context.Context, ko options.KeyOpts, e *models.LogEntr
 	if err := cosign.VerifyTLogEntry(ctx, rekorClient, e); err != nil {
 		return nil
 	}
+	log.Println("rekor-verify-online:end")
 
 	uuid, err := cosign.ComputeLeafHash(e)
 	if err != nil {
@@ -350,10 +363,12 @@ func verifyRekorBundle(ctx context.Context, bundlePath string, cert *x509.Certif
 	if b.Bundle == nil {
 		return fmt.Errorf("rekor entry is not available")
 	}
+	log.Println("tuf:start")
 	publicKeys, err := cosign.GetRekorPubs(ctx)
 	if err != nil {
 		return errors.Wrap(err, "retrieving rekor public key")
 	}
+	log.Println("tuf:end")
 
 	pubKey, ok := publicKeys[b.Bundle.Payload.LogID]
 	if !ok {

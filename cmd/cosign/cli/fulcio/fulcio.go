@@ -23,6 +23,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 
@@ -62,11 +63,14 @@ func getCertForOauthID(priv *ecdsa.PrivateKey, fc api.Client, connector oidcConn
 		return nil, err
 	}
 
+	log.Println("preoidc")
 	tok, err := connector.OIDConnect(oidcIssuer, oidcClientID, oidcClientSecret, oidcRedirectURL)
 	if err != nil {
 		return nil, err
 	}
+	log.Println("postoidc")
 
+	log.Println("post prep req")
 	// Sign the email address as part of the request
 	h := sha256.Sum256([]byte(tok.Subject))
 	proof, err := ecdsa.SignASN1(rand.Reader, priv, h[:])
@@ -81,7 +85,9 @@ func getCertForOauthID(priv *ecdsa.PrivateKey, fc api.Client, connector oidcConn
 		},
 		SignedEmailAddress: proof,
 	}
+	log.Println("post prep req")
 
+	log.Println("pre fulcio")
 	return fc.SigningCert(cr, tok.RawString)
 }
 
@@ -126,7 +132,9 @@ func NewSigner(ctx context.Context, ko options.KeyOpts) (*Signer, error) {
 		}
 	}
 
+	log.Println("prekeygen")
 	priv, err := cosign.GeneratePrivateKey()
+	log.Println("postkeygen")
 	if err != nil {
 		return nil, errors.Wrap(err, "generating cert")
 	}
@@ -147,6 +155,7 @@ func NewSigner(ctx context.Context, ko options.KeyOpts) (*Signer, error) {
 		flow = FlowNormal
 	}
 	Resp, err := GetCert(ctx, priv, idToken, flow, ko.OIDCIssuer, ko.OIDCClientID, ko.OIDCClientSecret, ko.OIDCRedirectURL, fClient) // TODO, use the chain.
+	log.Println("post fulcio")
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving cert")
 	}

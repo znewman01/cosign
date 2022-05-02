@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"os"
 
 	ct "github.com/google/certificate-transparency-go"
@@ -76,6 +77,7 @@ func VerifySCT(ctx context.Context, certPEM, chainPEM, rawSCT []byte) error {
 	// fetch SCT verification key
 	pubKeys := make(map[[sha256.Size]byte]logIDMetadata)
 	rootEnv := os.Getenv(altCTLogPublicKeyLocation)
+	log.Println("pretuf")
 	if rootEnv == "" {
 		tufClient, err := tuf.NewFromEnv(ctx)
 		if err != nil {
@@ -117,7 +119,9 @@ func VerifySCT(ctx context.Context, certPEM, chainPEM, rawSCT []byte) error {
 	if len(pubKeys) == 0 {
 		return errors.New("none of the CTFE keys have been found")
 	}
+	log.Println("posttuf")
 
+	log.Println("presctcrypto")
 	// parse certificate and chain
 	cert, err := x509util.CertificateFromPEM(certPEM)
 	if err != nil {
@@ -179,6 +183,7 @@ func VerifySCT(ctx context.Context, certPEM, chainPEM, rawSCT []byte) error {
 	if pubKeyMetadata.status != tuf.Active {
 		fmt.Fprintf(os.Stderr, "**Info** Successfully verified SCT using an expired verification key\n")
 	}
+	log.Println("postsctcrypto")
 	return nil
 }
 

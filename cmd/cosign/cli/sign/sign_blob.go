@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -40,6 +41,8 @@ func SignBlobCmd(ro *options.RootOptions, ko options.KeyOpts, regOpts options.Re
 	var err error
 	var rekorBytes []byte
 
+	log.Println("startup")
+
 	if payloadPath == "-" {
 		payload, err = io.ReadAll(os.Stdin)
 	} else {
@@ -49,6 +52,7 @@ func SignBlobCmd(ro *options.RootOptions, ko options.KeyOpts, regOpts options.Re
 	if err != nil {
 		return nil, err
 	}
+	log.Println("payload")
 
 	ctx, cancel := context.WithTimeout(context.Background(), ro.Timeout)
 	defer cancel()
@@ -59,10 +63,12 @@ func SignBlobCmd(ro *options.RootOptions, ko options.KeyOpts, regOpts options.Re
 	}
 	defer sv.Close()
 
+	log.Println("presign")
 	sig, err := sv.SignMessage(bytes.NewReader(payload), signatureoptions.WithContext(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "signing blob")
 	}
+	log.Println("postsign")
 
 	signedPayload := cosign.LocalSignedPayload{}
 
@@ -75,10 +81,12 @@ func SignBlobCmd(ro *options.RootOptions, ko options.KeyOpts, regOpts options.Re
 		if err != nil {
 			return nil, err
 		}
+		log.Println("pretlog")
 		entry, err := cosign.TLogUpload(ctx, rekorClient, sig, payload, rekorBytes)
 		if err != nil {
 			return nil, err
 		}
+		log.Println("posttlog")
 		fmt.Fprintln(os.Stderr, "tlog entry created with index:", *entry.LogIndex)
 		signedPayload.Bundle = cbundle.EntryToBundle(entry)
 	}
