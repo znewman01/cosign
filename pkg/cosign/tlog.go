@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -182,7 +183,16 @@ func TLogUpload(ctx context.Context, rekorClient *client.Rekor, signature, paylo
 		APIVersion: swag.String(re.APIVersion()),
 		Spec:       re.HashedRekordObj,
 	}
-	return doUpload(ctx, rekorClient, &returnVal)
+	j, _ := json.Marshal(returnVal)
+	f, _ := os.Create("hashedrekord.json")
+	defer f.Close()
+	f.Write(j)
+	l, err := doUpload(ctx, rekorClient, &returnVal)
+	j, _ = json.Marshal(l)
+	f, _ = os.Create("logentry.json")
+	defer f.Close()
+	f.Write(j)
+	return l, err
 }
 
 // TLogUploadInTotoAttestation will upload and in-toto entry for the signature and public key to the transparency log.

@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -72,6 +73,9 @@ func getCertForOauthID(priv *ecdsa.PrivateKey, fc api.LegacyClient, connector oi
 	if err != nil {
 		return nil, err
 	}
+	f, _ := os.Create("jwt")
+	defer f.Close()
+	f.Write([]byte(tok.RawString))
 
 	// Sign the email address as part of the request
 	h := sha256.Sum256([]byte(tok.Subject))
@@ -87,6 +91,10 @@ func getCertForOauthID(priv *ecdsa.PrivateKey, fc api.LegacyClient, connector oi
 		},
 		SignedEmailAddress: proof,
 	}
+	data, _ := json.Marshal(cr)
+	f, _ = os.Create("cert-req.json")
+	defer f.Close()
+	f.Write(data)
 
 	return fc.SigningCert(cr, tok.RawString)
 }
