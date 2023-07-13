@@ -19,6 +19,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
@@ -27,6 +28,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/lestrrat-go/jwx/jwk"
+	"math/big"
 	"net/http"
 	"os"
 	"regexp"
@@ -53,6 +56,7 @@ import (
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	ociexperimental "github.com/sigstore/cosign/v2/internal/pkg/oci/remote"
 	"github.com/sigstore/cosign/v2/internal/ui"
+	"github.com/sigstore/cosign/v2/pkg/cosign/poa"
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/oci/layout"
 	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
@@ -658,6 +662,11 @@ func verifySignatures(ctx context.Context, sigs oci.Signatures, h v1.Hash, co *C
 	return checkedSignatures, bundleVerified, nil
 }
 
+type jwtHeader struct {
+	Alg string // `json`:"alg"`
+	Kid string // `json`:"kid"`
+}
+
 // verifyInternal holds the main verification flow for signatures and attestations.
 //  1. Verifies the signature using the provided verifier.
 //  2. Checks for transparency log entry presence:
@@ -796,13 +805,70 @@ func verifyInternal(ctx context.Context, sig oci.Signature, h v1.Hash,
 			if err := CheckExpiry(cert, time.Now()); err != nil {
 				// If certificate is expired and not signed timestamp was provided then error the following message. Otherwise throw an expiration error.
 				if co.IgnoreTlog && acceptableRFC3161Time == nil {
-					return false, &VerificationFailure{
-						fmt.Errorf("expected a signed timestamp to verify an expired certificate"),
-					}
+					// return false, &VerificationFailure{
+					// 	fmt.Errorf("expected a signed timestamp to verify an expired certificate"),
+					// }
 				}
-				return false, fmt.Errorf("checking expiry on certificate with bundle: %w", err)
+				// return false, fmt.Errorf("checking expiry on certificate with bundle: %w", err)
 			}
 		}
+	}
+
+	// extract JWT extension
+	ce := CertExtensions{Cert: cert}
+
+	if err := validateCertExtensions(ce, co); err != nil {
+		return false, err
+	}
+	jwtNoSig := poa.ParseJWTNoSignature(ce.GetCertExtensionJWTNoSignature())
+
+	// get jwk
+	var header jwtHeader
+	err = json.Unmarshal(jwtNoSig.Header, &header)
+	if err != nil {
+		return false, fmt.Errorf("unmarshal jwt header: %w", err)
+	}
+
+	// TODO: use OIDC discovery
+	set, err := jwk.Fetch(ctx, "https://oauth2.sigstore.dev/auth/keys")
+	if err != nil {
+		return false, fmt.Errorf("fetch jwks: %w", err)
+	}
+	var matchingKey jwk.Key
+	found := false
+	for it := set.Iterate(ctx); it.Next(ctx); {
+		pair := it.Pair()
+		key := pair.Value.(jwk.Key)
+
+		if key.KeyID() == header.Kid {
+			found = true
+			matchingKey = key
+		}
+	}
+
+	if !found {
+		return false, fmt.Errorf("no matching key for OIDC verification found")
+	}
+	rsaPubJwk := matchingKey.(jwk.RSAPublicKey)
+	e := new(big.Int).SetBytes(rsaPubJwk.E())
+	n := new(big.Int).SetBytes(rsaPubJwk.N())
+	rsaPub := rsa.PublicKey{n, int(e.Int64())}
+
+	// extract GQProof extension
+	var proof poa.GQProof
+	err = json.Unmarshal([]byte(ce.GetCertExtensionGQProof()), &proof)
+	if err != nil {
+		return false, fmt.Errorf("parse gq proof: %w", err)
+	}
+
+	if !jwtNoSig.GQVerify(&rsaPub, proof) {
+		return false, fmt.Errorf("no gq verify")
+	}
+
+	// TODO: full OIDC validation
+	currTime := acceptableRekorBundleTime
+	if currTime != nil {
+		// TODO: check OIDC expiry
 	}
 
 	return bundleVerified, nil

@@ -31,6 +31,8 @@ var (
 	CertExtensionGithubWorkflowName       = "1.3.6.1.4.1.57264.1.4"
 	CertExtensionGithubWorkflowRepository = "1.3.6.1.4.1.57264.1.5"
 	CertExtensionGithubWorkflowRef        = "1.3.6.1.4.1.57264.1.6"
+	CertExtensionJWTNoSignature           = "1.3.9901"
+	CertExtensionGQProof                  = "1.3.9902"
 
 	CertExtensionMap = map[string]string{
 		CertExtensionOIDCIssuer:               "oidcIssuer",
@@ -39,6 +41,8 @@ var (
 		CertExtensionGithubWorkflowName:       "githubWorkflowName",
 		CertExtensionGithubWorkflowRepository: "githubWorkflowRepository",
 		CertExtensionGithubWorkflowRef:        "githubWorkflowRef",
+		CertExtensionJWTNoSignature:           "jwtNoSignature",
+		CertExtensionGQProof:                  "gqProof",
 	}
 )
 
@@ -83,4 +87,13 @@ func (ce *CertExtensions) GetCertExtensionGithubWorkflowRepository() string {
 // GetCertExtensionGithubWorkflowRef returns the GitHub Workflow Ref for a Certificate
 func (ce *CertExtensions) GetCertExtensionGithubWorkflowRef() string {
 	return ce.certExtensions()["githubWorkflowRef"]
+}
+
+func (ce *CertExtensions) GetCertExtensionJWTNoSignature() string {
+	// fmt.Printf("decoded [%v]\n", []byte(ce.certExtensions()["jwtNoSignature"][:20]))
+	return ce.certExtensions()["jwtNoSignature"][4:]
+}
+
+func (ce *CertExtensions) GetCertExtensionGQProof() string {
+	return ce.certExtensions()["gqProof"][4:]
 }
