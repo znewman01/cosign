@@ -38,7 +38,7 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.7.1
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.7.1
 	github.com/sigstore/timestamp-authority v1.1.1
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
 	github.com/spiffe/go-spiffe/v2 v2.1.6
@@ -134,7 +134,7 @@ require (
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/coreos/go-oidc/v3 v3.6.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/digitorus/pkcs7 v0.0.0-20221212123742-001c36b64ec3 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
