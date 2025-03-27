@@ -1,6 +1,7 @@
 module github.com/sigstore/cosign/v2
 
 go 1.19
+toolchain go1.24.1
 
 require (
 	cuelang.org/go v0.5.0
@@ -16,7 +17,7 @@ require (
 	github.com/go-openapi/swag v0.22.4
 	github.com/go-piv/piv-go v1.11.0
 	github.com/google/certificate-transparency-go v1.1.6
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.15.2
 	github.com/google/go-github/v53 v53.2.0
 	github.com/in-toto/in-toto-golang v0.9.0
